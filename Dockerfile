@@ -20,7 +20,8 @@ ENV NODE_ENV=production \
     PORT=3000 \
     CMD_TIMEOUT_MS=20000 \
     MAX_OUTPUT=60000 \
-    RATE_LIMIT_PER_MIN=30
+    RATE_LIMIT_PER_MIN=30 \
+    HEALTH_PATH=/health,/healthz
 
 EXPOSE 3000
 

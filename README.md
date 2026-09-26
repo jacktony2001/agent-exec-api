@@ -40,6 +40,7 @@ Anyone holding the token has a shell as that user. Treat the token like a passwo
 | `MAX_OUTPUT` | `60000` | Output truncation limit |
 | `RATE_LIMIT_PER_MIN` | `30` | Per-IP requests/minute to `/exec` |
 | `SHELL_BIN` | `bash` | Override the shell |
+| `HEALTH_PATH` | `/health,/healthz` | Comma-separated health routes (`/` always answers). `GET` and `HEAD` both work — hosts that probe with `HEAD` must not get a 404. |
 
 ## Run locally
 

@@ -49,6 +49,21 @@ function clientIp(req) {
   return req.socket.remoteAddress || "unknown";
 }
 
+/**
+ * Health endpoints a host probe might use. Hosts differ: some GET /health,
+ * some HEAD /, some /healthz. Answer all of them — the body is static, so a
+ * generous alias list costs nothing and prevents a false "unhealthy".
+ */
+function normalizeHealthPaths(value) {
+  const paths = new Set();
+  for (const raw of String(value ?? "").split(",")) {
+    const trimmed = raw.trim().replace(/^\/+|\/+$/g, "");
+    if (trimmed) paths.add(`/${trimmed}`);
+  }
+  paths.add("/");
+  return paths;
+}
+
 function send(res, status, body) {
   const payload = JSON.stringify(body);
   res.writeHead(status, {
@@ -222,6 +237,7 @@ export function createExecServer(options = {}) {
   const rateLimit = clamp(options.rateLimit || 30, 1, 10000);
   const shellBin = String(options.shellBin || DEFAULT_SHELL);
   const log = typeof options.log === "function" ? options.log : () => {};
+  const healthPaths = normalizeHealthPaths(options.healthPaths ?? "/health,/healthz");
 
   const hits = new Map(); // ip -> { count, resetAt }
 
@@ -243,7 +259,9 @@ export function createExecServer(options = {}) {
     const url = new URL(req.url || "/", "http://placeholder");
     const path = url.pathname.replace(/\/+$/, "") || "/";
 
-    if (req.method === "GET" && (path === "/health" || path === "/")) {
+    // HEAD as well as GET: a host that probes with HEAD must not get a 404 and
+    // be told the service is unreachable.
+    if ((req.method === "GET" || req.method === "HEAD") && healthPaths.has(path)) {
       return send(res, 200, { ok: true, service: "agent-exec-api" });
     }
 
@@ -319,6 +337,7 @@ if (isMain) {
     maxOutput: process.env.MAX_OUTPUT,
     rateLimit: process.env.RATE_LIMIT_PER_MIN,
     shellBin: process.env.SHELL_BIN,
+    healthPaths: process.env.HEALTH_PATH,
     log: (event) => console.log(JSON.stringify(event))
   });
 

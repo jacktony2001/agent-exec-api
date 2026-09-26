@@ -35,6 +35,33 @@ async function withServer(options, fn) {
   }
 }
 
+test("answers the probe styles hosts actually use", async () => {
+  await withServer({}, async ({ base, exec }) => {
+    // GET on each alias, plus HEAD — a probe that gets a 404 here is reported
+    // by hosts as "service unreachable".
+    for (const path of ["/", "/health", "/healthz"]) {
+      const get = await fetch(`${base}${path}`);
+      assert.equal(get.status, 200, `GET ${path}`);
+      assert.equal((await get.json()).ok, true);
+    }
+    for (const path of ["/", "/health"]) {
+      const head = await fetch(`${base}${path}`, { method: "HEAD" });
+      assert.equal(head.status, 200, `HEAD ${path}`);
+    }
+    // Health stays public; /exec stays locked.
+    assert.equal((await exec({ command: "echo x" }, null)).status, 401);
+    assert.equal((await fetch(`${base}/not-a-probe`)).status, 404);
+  });
+});
+
+test("custom health paths can be configured", async () => {
+  await withServer({ healthPaths: "/alive" }, async ({ base }) => {
+    assert.equal((await fetch(`${base}/alive`)).status, 200);
+    assert.equal((await fetch(`${base}/health`)).status, 404, "default replaced");
+    assert.equal((await fetch(`${base}/`)).status, 200, "root always answers");
+  });
+});
+
 test("GET /health is public and does not leak config", async () => {
   await withServer({}, async ({ base }) => {
     const res = await fetch(`${base}/health`);
