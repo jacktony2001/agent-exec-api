@@ -23,4 +23,10 @@ ENV NODE_ENV=production \
     RATE_LIMIT_PER_MIN=30
 
 EXPOSE 3000
+
+# Give the orchestrator a real health signal instead of guessing. Shell form so
+# ${PORT} is expanded at runtime (hosts like Coolify inject their own PORT).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -q -O /dev/null "http://127.0.0.1:${PORT:-3000}/health" || exit 1
+
 CMD ["node", "/app/server.js"]

@@ -59,6 +59,22 @@ npm test        # 11 tests: auth, fail-closed, exit codes, timeout kill,
                 # output truncation, body validation, rate limiting
 ```
 
+## Deploy to Coolify
+
+1. New resource → Application → **Public Repository** → paste the URL → build pack **Dockerfile**.
+2. The image declares `EXPOSE 3000` and its own `HEALTHCHECK` against `/health` (it follows `$PORT`, so it stays correct if the host injects a different port). If Coolify asks for a port, match whatever the app logged in `{"event":"listening","port":…}`.
+3. **Environment Variables** → add `SHELL_TOKEN` as a **runtime** variable (not a build variable) → **Redeploy**. Coolify only applies env changes on a new deployment.
+4. Confirm from outside:
+
+```bash
+curl -s https://YOUR-DOMAIN/health
+```
+
+If the container logs `listening` and answers `/health` with 200 but the deployment still reports
+*status unknown*, the app is fine and the host's probe is not reaching it — check the health-check
+path/port and that the domain points at this container. A missing `SHELL_TOKEN` never affects the
+health endpoint; it only makes `/exec` return 503.
+
 ## Deploy to VibeNest (free tier)
 
 1. Push this directory to a GitHub repo.

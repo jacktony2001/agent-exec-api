@@ -131,6 +131,29 @@ test("unknown routes return 404", async () => {
   });
 });
 
+test("a failed bind is logged instead of crashing the process", async () => {
+  const first = createExecServer({ token: TOKEN });
+  await new Promise((resolve) => first.listen(0, "127.0.0.1", resolve));
+  const { port } = first.address();
+
+  const events = [];
+  const second = createExecServer({ token: TOKEN, log: (e) => events.push(e) });
+  const failure = await new Promise((resolve) => {
+    second.once("error", resolve);
+    second.listen(port, "127.0.0.1");
+  });
+
+  assert.equal(failure.code, "EADDRINUSE", "the bind error reaches the caller");
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(
+    events.some((e) => e.event === "server_error" && e.code === "EADDRINUSE"),
+    `expected a logged server_error, got ${JSON.stringify(events)}`
+  );
+
+  await new Promise((resolve) => second.close(resolve));
+  await new Promise((resolve) => first.close(resolve));
+});
+
 test("rate limits a single client", async () => {
   await withServer({ rateLimit: 3 }, async ({ exec }) => {
     const codes = [];

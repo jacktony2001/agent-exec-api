@@ -298,6 +298,12 @@ export function createExecServer(options = {}) {
   });
 
   server.on("clientError", (_err, socket) => socket.end());
+  // A failed bind (EADDRINUSE, EACCES) must surface as a clear log line. Left
+  // unhandled, the 'error' event kills the process with a raw stack trace and
+  // the host only reports "unhealthy / status unknown".
+  server.on("error", (err) => {
+    log({ event: "server_error", error: err.message, code: err.code });
+  });
   return server;
 }
 
@@ -324,6 +330,20 @@ if (isMain) {
       })
     );
   }
+
+  // Fail loudly and immediately: a host that can't reach the port should see
+  // why, rather than a container that is up but serving nothing.
+  server.on("error", (err) => {
+    console.error(
+      JSON.stringify({
+        event: "fatal",
+        error: err.message,
+        code: err.code,
+        port
+      })
+    );
+    process.exit(1);
+  });
 
   server.listen(port, "0.0.0.0", () => {
     console.log(JSON.stringify({ event: "listening", port, shell: process.env.SHELL_BIN || DEFAULT_SHELL }));
