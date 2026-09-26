@@ -1,0 +1,14 @@
+{
+  "name": "agent-exec-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Authenticated command-execution endpoint used as the shell backend for a Cloudflare Worker agent",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  }
+}
